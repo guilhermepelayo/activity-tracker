@@ -1,13 +1,9 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
-import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
-import 'package:android_intent_plus/android_intent.dart';
-import 'package:android_intent_plus/flag.dart';
-import 'package:path/path.dart' as path;
-import 'package:flutter/foundation.dart';
+import 'package:csv/csv.dart';
 import 'package:share_plus/share_plus.dart';
-
 import '../models/activity.dart';
 import '../widgets/add_activity_dialog.dart';
 import '../widgets/add_time_entry_dialog.dart';
@@ -20,10 +16,44 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Activity> activities = [];
 
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _saveData() async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/activities.json');
+      final jsonData = jsonEncode(activities.map((e) => e.toJson()).toList());
+      await file.writeAsString(jsonData);
+    } catch (e) {
+      print("Error saving data: $e");
+    }
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/activities.json');
+      if (await file.exists()) {
+        final jsonData = await file.readAsString();
+        final List<dynamic> data = jsonDecode(jsonData);
+        setState(() {
+          activities = data.map((e) => Activity.fromJson(e)).toList();
+        });
+      }
+    } catch (e) {
+      print("Error loading data: $e");
+    }
+  }
+
   void _addActivity(String name, String type) {
     setState(() {
       activities.add(Activity(name: name, type: type, timestamp: DateTime.now()));
     });
+    _saveData();
   }
 
   Future<void> _showAddActivityDialog() async {
@@ -45,6 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         activity.timeEntries.add(timeEntry);
       });
+      _saveData();
     }
   }
 
@@ -73,10 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final file = File(filePath);
       await file.writeAsString(csv);
 
-      // Get the content URI for the file
-      final uri = Uri.file(file.path);
-
-      // Use Share package to share the file via email or other apps
+      // Share file
       await Share.shareXFiles([XFile(file.path)], text: 'Here is my activity log in CSV format.');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
