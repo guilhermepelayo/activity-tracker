@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:csv/csv.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/activity.dart';
+import '../screens/analytics_screen.dart';
 import '../widgets/add_activity_dialog.dart';
 import '../widgets/add_time_entry_dialog.dart';
 
@@ -119,6 +120,17 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Text('Activity Tracker'),
         actions: [
+          IconButton(
+            icon: Icon(Icons.analytics),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AnalyticsScreen(activities: activities),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: Icon(Icons.share),
             onPressed: _exportData,
