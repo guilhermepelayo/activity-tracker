@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'dart:convert';
-import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:csv/csv.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:intl/intl.dart';
 import '../models/activity.dart';
 import '../screens/analytics_screen.dart';
 import '../widgets/add_activity_dialog.dart';
@@ -203,12 +203,21 @@ class _AddTimeEntryDialogState extends State<AddTimeEntryDialog> {
                       title: Text("Start Time"),
                       subtitle: Text(startTime == null
                           ? "Not set"
-                          : DateFormat('dd/MM/yyyy HH:mm').format(startTime!)),
+                          : DateFormat('HH:mm').format(startTime!)),
                       onTap: () async {
-                        final picked = await showDateTimePicker();
-                        if (picked != null) {
+                        final pickedTime = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (pickedTime != null) {
                           setState(() {
-                            startTime = picked;
+                            startTime = DateTime(
+                              DateTime.now().year,
+                              DateTime.now().month,
+                              DateTime.now().day,
+                              pickedTime.hour,
+                              pickedTime.minute,
+                            );
                           });
                         }
                       },
@@ -217,12 +226,21 @@ class _AddTimeEntryDialogState extends State<AddTimeEntryDialog> {
                       title: Text("End Time"),
                       subtitle: Text(endTime == null
                           ? "Not set"
-                          : DateFormat('dd/MM/yyyy HH:mm').format(endTime!)),
+                          : DateFormat('HH:mm').format(endTime!)),
                       onTap: () async {
-                        final picked = await showDateTimePicker();
-                        if (picked != null) {
+                        final pickedTime = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (pickedTime != null) {
                           setState(() {
-                            endTime = picked;
+                            endTime = DateTime(
+                              DateTime.now().year,
+                              DateTime.now().month,
+                              DateTime.now().day,
+                              pickedTime.hour,
+                              pickedTime.minute,
+                            );
                           });
                         }
                       },
@@ -249,26 +267,5 @@ class _AddTimeEntryDialogState extends State<AddTimeEntryDialog> {
         ),
       ],
     );
-  }
-
-  Future<DateTime?> showDateTimePicker() async {
-    DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      locale: const Locale('en', 'GB'),
-    );
-    if (pickedDate != null) {
-      TimeOfDay? pickedTime = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.now(),
-      );
-      if (pickedTime != null) {
-        return DateTime(pickedDate.year, pickedDate.month, pickedDate.day,
-            pickedTime.hour, pickedTime.minute);
-      }
-    }
-    return null;
   }
 }
