@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 class AnalyticsScreen extends StatefulWidget {
   final List<Activity> activities;
 
-  AnalyticsScreen({required this.activities});
+  const AnalyticsScreen({super.key, required this.activities});
 
   @override
   _AnalyticsScreenState createState() => _AnalyticsScreenState();
@@ -15,77 +15,34 @@ class AnalyticsScreen extends StatefulWidget {
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Activity? selectedActivity;
   String selectedTimeSpan = "This Week";
-  List<String> timeSpans = ["This Week", "Last Month", "Last Year"];
   Map<String, double> groupedData = {};
+  DateTime? startDate;
+  DateTime? endDate;
 
-  List<BarChartGroupData> _generateChartData() {
+  List<BarChartGroupData> _generateWeekChartData() {
     groupedData.clear();
-
     if (selectedActivity == null) return [];
 
     DateTime now = DateTime.now();
+    DateTime startOfWeek = DateTime(now.year, now.month, now.day)
+        .subtract(Duration(days: (now.weekday - DateTime.monday) % 7));
+    DateTime endOfWeek = startOfWeek.add(Duration(days: 6));
 
-    if (selectedTimeSpan == "This Week") {
-      DateTime startOfWeek = DateTime(now.year, now.month, now.day)
-          .subtract(Duration(days: (now.weekday - DateTime.monday) % 7));
-      DateTime endOfWeek = startOfWeek.add(Duration(days: 6));
+    for (int i = 0; i <= 6; i++) {
+      DateTime currentDay = startOfWeek.add(Duration(days: i));
+      String dayLabel = DateFormat('EEE').format(currentDay);
+      groupedData[dayLabel] = 0;
+    }
 
-      for (int i = 0; i <= 6; i++) {
-        DateTime currentDay = startOfWeek.add(Duration(days: i));
-        String dayLabel = DateFormat('EEE').format(currentDay);
-        groupedData[dayLabel] = 0;
-      }
-
-      for (var entry in selectedActivity!.timeEntries) {
-        DateTime entryDateOnly =
-            DateTime(entry.date.year, entry.date.month, entry.date.day);
-        if (!entryDateOnly.isBefore(startOfWeek) &&
-            !entryDateOnly.isAfter(endOfWeek)) {
-          String dayLabel = DateFormat('EEE').format(entry.date);
-          groupedData[dayLabel] = groupedData[dayLabel]! + entry.hours;
-        }
-      }
-    } else if (selectedTimeSpan == "Last Month") {
-      DateTime startOfMonth = DateTime(now.year, now.month, 1);
-      int daysInLastMonth =
-          DateTime(startOfMonth.year, startOfMonth.month + 1, 1)
-              .subtract(Duration(days: 1))
-              .day;
-
-      DateTime weekStart = startOfMonth;
-      int weekIndex = 1;
-
-      while (weekStart.month == startOfMonth.month) {
-        DateTime weekEnd = weekStart.add(Duration(days: 6));
-        if (weekEnd.month != startOfMonth.month) {
-          weekEnd =
-              DateTime(startOfMonth.year, startOfMonth.month, daysInLastMonth);
-        }
-
-        String weekLabel = "Week $weekIndex";
-        groupedData[weekLabel] = 0.0;
-
-        print(
-            "Checking for entries between ${weekStart.toIso8601String()} and ${weekEnd.toIso8601String()} for $weekLabel");
-
-        for (var entry in selectedActivity!.timeEntries) {
-          DateTime entryDateOnly =
-              DateTime(entry.date.year, entry.date.month, entry.date.day);
-          if (!entryDateOnly.isBefore(weekStart) &&
-              !entryDateOnly.isAfter(weekEnd)) {
-            groupedData[weekLabel] = groupedData[weekLabel]! + entry.hours;
-            print(
-                "Added ${entry.hours} hours for entry on ${entry.date.toIso8601String()} to $weekLabel");
-          }
-        }
-
-        weekIndex++;
-        weekStart = weekEnd.add(Duration(days: 1));
+    for (var entry in selectedActivity!.timeEntries) {
+      DateTime entryDateOnly = DateTime(entry.date.year, entry.date.month, entry.date.day);
+      if (!entryDateOnly.isBefore(startOfWeek) && !entryDateOnly.isAfter(endOfWeek)) {
+        String dayLabel = DateFormat('EEE').format(entry.date);
+        groupedData[dayLabel] = groupedData[dayLabel]! + entry.hours;
       }
     }
 
     int x = 0;
-    print("Final chart data generated: $groupedData");
     return groupedData.entries.map((entry) {
       return BarChartGroupData(
         x: x++,
@@ -98,6 +55,36 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         showingTooltipIndicators: [0],
       );
     }).toList();
+  }
+
+  List<Map<String, dynamic>> _generateTableData() {
+    List<Map<String, dynamic>> tableData = [];
+    if (selectedActivity == null || startDate == null || endDate == null) return tableData;
+
+    for (var entry in selectedActivity!.timeEntries) {
+      DateTime entryDateOnly = DateTime(entry.date.year, entry.date.month, entry.date.day);
+      if (!entryDateOnly.isBefore(startDate!) && !entryDateOnly.isAfter(endDate!)) {
+        tableData.add({
+          "Date": DateFormat('yyyy-MM-dd').format(entry.date),
+          "Hours": entry.hours,
+        });
+      }
+    }
+    return tableData;
+  }
+
+  Future<void> _selectDateRange(BuildContext context) async {
+    final pickedRange = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+    );
+    if (pickedRange != null) {
+      setState(() {
+        startDate = pickedRange.start;
+        endDate = pickedRange.end;
+      });
+    }
   }
 
   @override
@@ -131,9 +118,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               onChanged: (String? newValue) {
                 setState(() {
                   selectedTimeSpan = newValue!;
+                  if (selectedTimeSpan == "Select Timespan") {
+                    _selectDateRange(context);
+                  }
                 });
               },
-              items: timeSpans.map((String span) {
+              items: ["This Week", "Select Timespan"].map((String span) {
                 return DropdownMenuItem<String>(
                   value: span,
                   child: Text(span),
@@ -144,34 +134,42 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             Expanded(
               child: selectedActivity == null
                   ? Center(child: Text("Please select an activity"))
-                  : BarChart(
-                      BarChartData(
-                        barGroups: _generateChartData(),
-                        titlesData: FlTitlesData(
-                          leftTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 40,
+                  : selectedTimeSpan == "This Week"
+                      ? BarChart(
+                          BarChartData(
+                            barGroups: _generateWeekChartData(),
+                            titlesData: FlTitlesData(
+                              leftTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 40,
+                                ),
+                              ),
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  getTitlesWidget: (value, meta) {
+                                    if (value.toInt() < groupedData.keys.length) {
+                                      final dateKey = groupedData.keys.elementAt(value.toInt());
+                                      return Text(dateKey);
+                                    }
+                                    return Text('');
+                                  },
+                                  reservedSize: 40,
+                                ),
+                              ),
                             ),
+                            borderData: FlBorderData(show: false),
                           ),
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              getTitlesWidget: (value, meta) {
-                                if (value.toInt() < groupedData.keys.length) {
-                                  final dateKey =
-                                      groupedData.keys.elementAt(value.toInt());
-                                  return Text(dateKey);
-                                }
-                                return Text('');
-                              },
-                              reservedSize: 40,
-                            ),
-                          ),
+                        )
+                      : ListView(
+                          children: _generateTableData().map((data) {
+                            return ListTile(
+                              title: Text("Date: ${data['Date']}"),
+                              subtitle: Text("Hours: ${data['Hours']}"),
+                            );
+                          }).toList(),
                         ),
-                        borderData: FlBorderData(show: false),
-                      ),
-                    ),
             ),
           ],
         ),
