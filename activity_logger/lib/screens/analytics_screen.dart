@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../models/activity.dart';
 import 'package:intl/intl.dart';
+import '../models/activity.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   final List<Activity> activities;
@@ -15,9 +15,84 @@ class AnalyticsScreen extends StatefulWidget {
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Activity? selectedActivity;
   String selectedTimeSpan = "This Week";
-  Map<String, double> groupedData = {};
   DateTime? startDate;
   DateTime? endDate;
+  Map<String, double> groupedData = {};
+
+  Future<void> _selectDateRange(BuildContext context) async {
+    final pickedRange = await showDateRangePicker(
+      context: context,
+      initialDateRange: DateTimeRange(
+        start: DateTime(DateTime.now().year, DateTime.now().month, 1),
+        end: DateTime.now(),
+      ),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+      helpText: 'Select Date Range',
+      locale: const Locale('en', 'GB'), // Sets the date format to dd/MM/yyyy
+    );
+
+    if (pickedRange != null) {
+      setState(() {
+        startDate = pickedRange.start;
+        endDate = pickedRange.end;
+      });
+    }
+  }
+
+  Future<void> _selectSingleDate(BuildContext context) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+      helpText: 'Select Date',
+      locale: const Locale('en', 'GB'), // Sets the date format to dd/MM/yyyy
+    );
+
+    if (pickedDate != null) {
+      setState(() {
+        startDate = pickedDate;
+        endDate = pickedDate;
+      });
+    }
+  }
+
+  Future<void> _selectMonthYear(BuildContext context) async {
+    final DateTime now = DateTime.now();
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime(now.year, now.month, 1),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(now.year, now.month),
+      initialDatePickerMode: DatePickerMode.year,
+      helpText: 'Select Month and Year',
+      locale: const Locale('en', 'GB'),
+    );
+
+    if (pickedDate != null) {
+      setState(() {
+        startDate = DateTime(pickedDate.year, pickedDate.month, 1);
+        endDate = DateTime(pickedDate.year, pickedDate.month + 1, 0); // End of the selected month
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> _generateTableData() {
+    List<Map<String, dynamic>> tableData = [];
+    if (selectedActivity == null || startDate == null || endDate == null) return tableData;
+
+    for (var entry in selectedActivity!.timeEntries) {
+      DateTime entryDateOnly = DateTime(entry.date.year, entry.date.month, entry.date.day);
+      if (!entryDateOnly.isBefore(startDate!) && !entryDateOnly.isAfter(endDate!)) {
+        tableData.add({
+          "Date": DateFormat('dd/MM/yyyy').format(entry.date),
+          "Hours": entry.hours,
+        });
+      }
+    }
+    return tableData;
+  }
 
   List<BarChartGroupData> _generateWeekChartData() {
     groupedData.clear();
@@ -57,40 +132,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     }).toList();
   }
 
-  List<Map<String, dynamic>> _generateTableData() {
-    List<Map<String, dynamic>> tableData = [];
-    if (selectedActivity == null || startDate == null || endDate == null) return tableData;
-
-    for (var entry in selectedActivity!.timeEntries) {
-      DateTime entryDateOnly = DateTime(entry.date.year, entry.date.month, entry.date.day);
-      if (!entryDateOnly.isBefore(startDate!) && !entryDateOnly.isAfter(endDate!)) {
-        tableData.add({
-          "Date": DateFormat('yyyy-MM-dd').format(entry.date),
-          "Hours": entry.hours,
-        });
-      }
-    }
-    return tableData;
-  }
-
-  Future<void> _selectDateRange(BuildContext context) async {
-    final pickedRange = await showDateRangePicker(
-      context: context,
-      initialDateRange: DateTimeRange(
-        start: DateTime(DateTime.now().year, DateTime.now().month, 1),
-        end: DateTime.now(),
-      ),
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
-    );
-    if (pickedRange != null) {
-      setState(() {
-        startDate = pickedRange.start;
-        endDate = pickedRange.end;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -122,12 +163,24 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               onChanged: (String? newValue) {
                 setState(() {
                   selectedTimeSpan = newValue!;
-                  if (selectedTimeSpan == "Select Timespan") {
+                  if (selectedTimeSpan == "This Week") {
+                    startDate = null;
+                    endDate = null;
+                  } else if (selectedTimeSpan == "Select Date Range") {
                     _selectDateRange(context);
+                  } else if (selectedTimeSpan == "Select Single Date") {
+                    _selectSingleDate(context);
+                  } else if (selectedTimeSpan == "Select Month and Year") {
+                    _selectMonthYear(context);
                   }
                 });
               },
-              items: ["This Week", "Select Timespan"].map((String span) {
+              items: [
+                "This Week",
+                "Select Date Range",
+                "Select Single Date",
+                "Select Month and Year",
+              ].map((String span) {
                 return DropdownMenuItem<String>(
                   value: span,
                   child: Text(span),
