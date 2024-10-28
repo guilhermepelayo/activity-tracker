@@ -19,74 +19,37 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   DateTime? endDate;
   Map<String, double> groupedData = {};
 
-  Future<void> _selectDateRange(BuildContext context) async {
-    final pickedRange = await showDateRangePicker(
-      context: context,
-      initialDateRange: DateTimeRange(
-        start: DateTime(DateTime.now().year, DateTime.now().month, 1),
-        end: DateTime.now(),
-      ),
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
-      locale: const Locale('en', 'GB'),
-    );
+Future<void> _selectDateRange(BuildContext context) async {
+  final DateTime now = DateTime.now();
+  final pickedRange = await showDateRangePicker(
+    context: context,
+    initialDateRange: (startDate != null && endDate != null)
+        ? DateTimeRange(start: startDate!, end: endDate!)
+        : DateTimeRange(
+            start: DateTime(now.year, now.month, 1),
+            end: now,
+          ),
+    firstDate: DateTime(2000),
+    lastDate: DateTime(now.year + 10), // Extends the range for future selection
+    locale: const Locale('en', 'GB'),
+  );
 
-    if (pickedRange != null) {
-      setState(() {
-        startDate = pickedRange.start;
-        endDate = pickedRange.end;
-      });
-    }
+  if (pickedRange != null) {
+    setState(() {
+      startDate = pickedRange.start;
+      endDate = pickedRange.end;
+    });
   }
+}
 
-  Future<void> _selectSingleDate(BuildContext context) async {
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
-      locale: const Locale('en', 'GB'),
-    );
-
-    if (pickedDate != null) {
-      setState(() {
-        startDate = pickedDate;
-        endDate = pickedDate;
-      });
-    }
-  }
-
-  Future<void> _selectMonthYear(BuildContext context) async {
-    final DateTime now = DateTime.now();
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime(now.year, now.month, 1),
-      firstDate: DateTime(2000),
-      lastDate:
-          DateTime(now.year + 1, 12, 31), // Last day of the following year
-      initialDatePickerMode: DatePickerMode.year,
-      locale: const Locale('en', 'GB'),
-    );
-
-    if (pickedDate != null) {
-      setState(() {
-        startDate = DateTime(pickedDate.year, pickedDate.month, 1);
-        endDate =
-            DateTime(pickedDate.year, pickedDate.month + 1, 0); // End of month
-      });
-    }
-  }
 
   List<Map<String, dynamic>> _generateTableData() {
-    // Ensure `tableData` is cleared each time this function runs
     List<Map<String, dynamic>> tableData = [];
 
-    // Return empty data if no activity or dates are set
     if (selectedActivity == null || startDate == null || endDate == null) {
       return tableData;
     }
 
-    // Populate table data if entries fall within the selected date range
     tableData = selectedActivity!.timeEntries
         .where((entry) =>
             entry.date.isAfter(startDate!.subtract(Duration(days: 1))) &&
@@ -97,7 +60,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             })
         .toList();
 
-    return tableData; // This will return an empty list if no entries match the selected date range
+    return tableData;
   }
 
   List<BarChartGroupData> _generateWeekChartData() {
@@ -176,18 +139,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     endDate = null;
                   } else if (selectedTimeSpan == "Select Date Range") {
                     _selectDateRange(context);
-                  } else if (selectedTimeSpan == "Select Single Date") {
-                    _selectSingleDate(context);
-                  } else if (selectedTimeSpan == "Select Month and Year") {
-                    _selectMonthYear(context);
                   }
                 });
               },
               items: [
                 "This Week",
                 "Select Date Range",
-                "Select Single Date",
-                "Select Month and Year",
               ].map((String span) {
                 return DropdownMenuItem<String>(
                   value: span,
