@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:csv/csv.dart';
@@ -7,7 +8,6 @@ import 'package:share_plus/share_plus.dart';
 import '../models/activity.dart';
 import '../screens/analytics_screen.dart';
 import '../widgets/add_activity_dialog.dart';
-import '../widgets/add_time_entry_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -82,7 +82,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _exportData() async {
     try {
-      // Generate CSV data
       List<List<String>> csvData = [
         ["Activity Name", "Type", "Time Entry Date", "Hours"]
       ];
@@ -98,14 +97,12 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
-      // Save CSV to file
       String csv = const ListToCsvConverter().convert(csvData);
       final directory = await getExternalStorageDirectory();
       final filePath = "${directory!.path}/activity_log.csv";
       final file = File(filePath);
       await file.writeAsString(csv);
 
-      // Share file
       await Share.shareXFiles([XFile(file.path)], text: 'Here is my activity log in CSV format.');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -162,5 +159,116 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+}
+
+class AddTimeEntryDialog extends StatefulWidget {
+  @override
+  _AddTimeEntryDialogState createState() => _AddTimeEntryDialogState();
+}
+
+class _AddTimeEntryDialogState extends State<AddTimeEntryDialog> {
+  DateTime? startTime;
+  DateTime? endTime;
+  double? hours;
+  bool useHoursEntry = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text("Add Time Entry"),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SwitchListTile(
+            title: Text("Enter by hours"),
+            value: useHoursEntry,
+            onChanged: (value) {
+              setState(() {
+                useHoursEntry = value;
+              });
+            },
+          ),
+          useHoursEntry
+              ? TextField(
+                  decoration: InputDecoration(labelText: "Hours"),
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) {
+                    hours = double.tryParse(value);
+                  },
+                )
+              : Column(
+                  children: [
+                    ListTile(
+                      title: Text("Start Time"),
+                      subtitle: Text(startTime == null
+                          ? "Not set"
+                          : DateFormat('dd/MM/yyyy HH:mm').format(startTime!)),
+                      onTap: () async {
+                        final picked = await showDateTimePicker();
+                        if (picked != null) {
+                          setState(() {
+                            startTime = picked;
+                          });
+                        }
+                      },
+                    ),
+                    ListTile(
+                      title: Text("End Time"),
+                      subtitle: Text(endTime == null
+                          ? "Not set"
+                          : DateFormat('dd/MM/yyyy HH:mm').format(endTime!)),
+                      onTap: () async {
+                        final picked = await showDateTimePicker();
+                        if (picked != null) {
+                          setState(() {
+                            endTime = picked;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text("Cancel"),
+        ),
+        TextButton(
+          onPressed: () {
+            if (useHoursEntry && hours != null) {
+              Navigator.pop(context, TimeEntry(date: DateTime.now(), hours: hours!));
+            } else if (startTime != null && endTime != null) {
+              final duration = endTime!.difference(startTime!).inHours.toDouble();
+              Navigator.pop(context, TimeEntry(date: DateTime.now(), hours: duration));
+            }
+          },
+          child: Text("Add"),
+        ),
+      ],
+    );
+  }
+
+  Future<DateTime?> showDateTimePicker() async {
+    DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      locale: const Locale('en', 'GB'),
+    );
+    if (pickedDate != null) {
+      TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.now(),
+      );
+      if (pickedTime != null) {
+        return DateTime(pickedDate.year, pickedDate.month, pickedDate.day,
+            pickedTime.hour, pickedTime.minute);
+      }
+    }
+    return null;
   }
 }
