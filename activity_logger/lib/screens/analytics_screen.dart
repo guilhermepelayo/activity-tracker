@@ -76,6 +76,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Future<void> _selectDateRange(BuildContext context) async {
     final pickedRange = await showDateRangePicker(
       context: context,
+      initialDateRange: DateTimeRange(
+        start: DateTime(DateTime.now().year, DateTime.now().month, 1),
+        end: DateTime.now(),
+      ),
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
     );
