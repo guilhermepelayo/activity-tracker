@@ -28,8 +28,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       ),
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
-      helpText: 'Select Date Range',
-      locale: const Locale('en', 'GB'), // Sets the date format to dd/MM/yyyy
+      locale: const Locale('en', 'GB'),
     );
 
     if (pickedRange != null) {
@@ -46,8 +45,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       initialDate: DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
-      helpText: 'Select Date',
-      locale: const Locale('en', 'GB'), // Sets the date format to dd/MM/yyyy
+      locale: const Locale('en', 'GB'),
     );
 
     if (pickedDate != null) {
@@ -64,34 +62,42 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       context: context,
       initialDate: DateTime(now.year, now.month, 1),
       firstDate: DateTime(2000),
-      lastDate: DateTime(now.year, now.month),
+      lastDate:
+          DateTime(now.year + 1, 12, 31), // Last day of the following year
       initialDatePickerMode: DatePickerMode.year,
-      helpText: 'Select Month and Year',
       locale: const Locale('en', 'GB'),
     );
 
     if (pickedDate != null) {
       setState(() {
         startDate = DateTime(pickedDate.year, pickedDate.month, 1);
-        endDate = DateTime(pickedDate.year, pickedDate.month + 1, 0); // End of the selected month
+        endDate =
+            DateTime(pickedDate.year, pickedDate.month + 1, 0); // End of month
       });
     }
   }
 
   List<Map<String, dynamic>> _generateTableData() {
+    // Ensure `tableData` is cleared each time this function runs
     List<Map<String, dynamic>> tableData = [];
-    if (selectedActivity == null || startDate == null || endDate == null) return tableData;
 
-    for (var entry in selectedActivity!.timeEntries) {
-      DateTime entryDateOnly = DateTime(entry.date.year, entry.date.month, entry.date.day);
-      if (!entryDateOnly.isBefore(startDate!) && !entryDateOnly.isAfter(endDate!)) {
-        tableData.add({
-          "Date": DateFormat('dd/MM/yyyy').format(entry.date),
-          "Hours": entry.hours,
-        });
-      }
+    // Return empty data if no activity or dates are set
+    if (selectedActivity == null || startDate == null || endDate == null) {
+      return tableData;
     }
-    return tableData;
+
+    // Populate table data if entries fall within the selected date range
+    tableData = selectedActivity!.timeEntries
+        .where((entry) =>
+            entry.date.isAfter(startDate!.subtract(Duration(days: 1))) &&
+            entry.date.isBefore(endDate!.add(Duration(days: 1))))
+        .map((entry) => {
+              "Date": DateFormat('dd/MM/yyyy').format(entry.date),
+              "Hours": entry.hours,
+            })
+        .toList();
+
+    return tableData; // This will return an empty list if no entries match the selected date range
   }
 
   List<BarChartGroupData> _generateWeekChartData() {
@@ -110,8 +116,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     }
 
     for (var entry in selectedActivity!.timeEntries) {
-      DateTime entryDateOnly = DateTime(entry.date.year, entry.date.month, entry.date.day);
-      if (!entryDateOnly.isBefore(startOfWeek) && !entryDateOnly.isAfter(endOfWeek)) {
+      DateTime entryDateOnly =
+          DateTime(entry.date.year, entry.date.month, entry.date.day);
+      if (!entryDateOnly.isBefore(startOfWeek) &&
+          !entryDateOnly.isAfter(endOfWeek)) {
         String dayLabel = DateFormat('EEE').format(entry.date);
         groupedData[dayLabel] = groupedData[dayLabel]! + entry.hours;
       }
@@ -206,8 +214,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                 sideTitles: SideTitles(
                                   showTitles: true,
                                   getTitlesWidget: (value, meta) {
-                                    if (value.toInt() < groupedData.keys.length) {
-                                      final dateKey = groupedData.keys.elementAt(value.toInt());
+                                    if (value.toInt() <
+                                        groupedData.keys.length) {
+                                      final dateKey = groupedData.keys
+                                          .elementAt(value.toInt());
                                       return Text(dateKey);
                                     }
                                     return Text('');
