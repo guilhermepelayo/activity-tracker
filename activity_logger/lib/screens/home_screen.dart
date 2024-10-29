@@ -81,14 +81,16 @@ class _HomeScreenState extends State<HomeScreen> {
       });
       _saveData();
 
-      // Display SnackBar with logged hours confirmation
-      final hoursLogged = timeEntry.hours.toStringAsFixed(1);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Logged $hoursLogged hours to ${activity.name}."),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      // Delay SnackBar to avoid keyboard overlap
+      Future.delayed(Duration(milliseconds: 300), () {
+        final hoursLogged = timeEntry.hours.toStringAsFixed(1);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Logged $hoursLogged hours to ${activity.name}."),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      });
     }
   }
 
