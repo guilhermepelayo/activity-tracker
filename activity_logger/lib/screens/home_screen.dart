@@ -111,6 +111,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _deleteActivity(int index) {
+    setState(() {
+      activities.removeAt(index);
+    });
+    _saveData();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -145,6 +152,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: Text(activity.name),
                   subtitle: Text(activity.type),
                   onTap: () => _showAddTimeEntryDialog(activity),
+                  trailing: IconButton(
+                    icon: Icon(Icons.delete, color: Colors.white),
+                    onPressed: () {
+                      _deleteActivity(index);
+                    },
+                  ),
                 );
               },
             ),
@@ -162,6 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
+// Rest of the AddTimeEntryDialog class
 class AddTimeEntryDialog extends StatefulWidget {
   @override
   _AddTimeEntryDialogState createState() => _AddTimeEntryDialogState();
