@@ -52,7 +52,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _addActivity(String name, String type) {
     setState(() {
-      activities.add(Activity(name: name, type: type, timestamp: DateTime.now()));
+      activities
+          .add(Activity(name: name, type: type, timestamp: DateTime.now()));
     });
     _saveData();
   }
@@ -60,7 +61,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _showAddActivityDialog() async {
     final result = await showDialog<Map<String, String>>(
       context: context,
-      builder: (BuildContext context) => AddActivityDialog(["Work", "Exercise", "Study", "Leisure", "Sleep", "Other"]),
+      builder: (BuildContext context) => AddActivityDialog(
+          ["Work", "Exercise", "Study", "Leisure", "Sleep", "Other"]),
     );
     if (result != null) {
       _addActivity(result["name"]!, result["type"]!);
@@ -72,11 +74,21 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (BuildContext context) => AddTimeEntryDialog(),
     );
+
     if (timeEntry != null) {
       setState(() {
         activity.timeEntries.add(timeEntry);
       });
       _saveData();
+
+      // Display SnackBar with logged hours confirmation
+      final hoursLogged = timeEntry.hours.toStringAsFixed(1);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Logged $hoursLogged hours to ${activity.name}."),
+          duration: Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -103,7 +115,8 @@ class _HomeScreenState extends State<HomeScreen> {
       final file = File(filePath);
       await file.writeAsString(csv);
 
-      await Share.shareXFiles([XFile(file.path)], text: 'Here is my activity log in CSV format.');
+      await Share.shareXFiles([XFile(file.path)],
+          text: 'Here is my activity log in CSV format.');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to export data: $e")),
@@ -271,10 +284,13 @@ class _AddTimeEntryDialogState extends State<AddTimeEntryDialog> {
         TextButton(
           onPressed: () {
             if (useHoursEntry && hours != null) {
-              Navigator.pop(context, TimeEntry(date: DateTime.now(), hours: hours!));
+              Navigator.pop(
+                  context, TimeEntry(date: DateTime.now(), hours: hours!));
             } else if (startTime != null && endTime != null) {
-              final duration = endTime!.difference(startTime!).inHours.toDouble();
-              Navigator.pop(context, TimeEntry(date: DateTime.now(), hours: duration));
+              final duration =
+                  endTime!.difference(startTime!).inHours.toDouble();
+              Navigator.pop(
+                  context, TimeEntry(date: DateTime.now(), hours: duration));
             }
           },
           child: Text("Add"),
